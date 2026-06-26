@@ -1,1 +1,0 @@
-# Job-Salary-Prediction-Model
