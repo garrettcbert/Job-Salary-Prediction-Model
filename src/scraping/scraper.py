@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 from jobspy import scrape_jobs
 from src.database import save_jobs, init_db
 import pandas as pd

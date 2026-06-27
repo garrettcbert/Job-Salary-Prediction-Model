@@ -2,9 +2,26 @@ import os
 import gradio as gr
 import src.model.train as train
 import numpy as np
+import plotly.graph_objects as go
+import plotly.io as pio
 import plotly.express as px
 import pandas as pd
 import joblib
+
+pio.templates['salary_theme'] = go.layout.Template(
+    layout=go.Layout(
+        font=dict(family="Arial, sans-serif", size=13, color="#2c2c2c"),
+        plot_bgcolor="#f9f9f9",
+        paper_bgcolor="#ffffff",
+        colorway=["#4C72B0", "#55A868", "#C44E52", "#8172B2", "#CCB974"],
+        title=dict(x=0.5, font=dict(size=18)),
+        xaxis=dict(showgrid=True, gridcolor="#e5e5e5", zeroline=False),
+        yaxis=dict(showgrid=True, gridcolor="#e5e5e5", zeroline=False),
+        margin=dict(l=60, r=30, t=60, b=60),
+    )
+)
+
+pio.templates.defualt = 'salary_theme'
 
 def load_model(filename='models/salary_predictor.pkl'):
     if not os.path.exists(filename):
@@ -63,7 +80,9 @@ def build_input_df(title, location, seniority, skills_input, degree_choice, indu
 
 model = load_model()
 
-def predict(title, location, seniority, skills_input, degree_choice, industry, company_size, years_exp):
+def predict(title, location, seniority, prog_skills, ml_skills, cloud_skills,
+            bigdata_skills, viz_skills, db_skills, degree_choice, industry, company_size, years_exp):
+    skills_input = prog_skills + ml_skills + cloud_skills + bigdata_skills + viz_skills + db_skills
     input_df = build_input_df(title, location, seniority, skills_input, degree_choice, industry, company_size, years_exp)
 
     X_transformed = model.named_steps['preprocess'].transform(input_df)
@@ -80,9 +99,11 @@ def predict(title, location, seniority, skills_input, degree_choice, industry, c
     )
 
 def tree_distribution(tree_preds, prediction):
-    fig = px.histogram(tree_preds, nbins=20, title='Distribution of Tree Predictions', labels={'value': 'Predicted Salary'})
-    fig.add_vline(x=prediction, line_dash="dash", line_color="red",
-                  annotation_text=f"Estimate: ${round(prediction, 2)}", annotation_position="top right")
+    fig = px.histogram(tree_preds, nbins=20, title='Distribution of Tree Predictions', labels={'value': 'Predicted Salary ($)'})
+    fig.update_traces(marker_line_width = 0)
+    fig.add_vline(x=prediction, line_dash="dash", line_color="#C44E52", line_width = 2,
+                  annotation_text=f"${prediction:,.0f}", annotation_position="top")
+    fig.update_layout(showlegend = False, yaxis_title = "Number of Trees", bargap = 0.05)
     return fig
 
 def skill_gap_analysis(input_df, base_prediction, skill_cols):
@@ -98,9 +119,12 @@ def skill_gap_plot(skill_gaps):
     fig = px.bar(
         x=list(skill_gaps.keys()),
         y=list(skill_gaps.values()),
+        orientation='h',
         title='Estimated Salary Increase from Adding Each Missing Skill',
-        labels={'x': 'Skill', 'y': 'Estimated Salary Increase'})
-    fig.update_layout(xaxis_title='Skill', yaxis_title='Estimated Salary Increase', title_x=0.5, showlegend=False)
+        labels={'x': 'Estimated Salary Increase ($)', 'y': ''}
+        )
+    fig.update_traces(text = [f"${v:,.0f}" for v in skill_gaps.values()], textposition = 'outside')
+    fig.update_layout(showlegend = False, yaxis = dict(autorange = 'reversed'))
     return fig
 
 with gr.Blocks() as demo:
@@ -119,61 +143,76 @@ with gr.Blocks() as demo:
             'Washington, DC'
         ], label="Location")
 
-        title = gr.Dropdown(choices=[
-            'data scientist',
-            'data engineer',
-            'data analyst',
-            'machine learning engineer',
-            'AI engineer',
-            'business intelligence analyst',
-            'analytics engineer'
-        ], label="Job Title")
+        title = gr.Dropdown(
+            choices=[
+                ('Data Scientist', 'data scientist'),
+                ('Data Engineer', 'data engineer'),
+                ('Data Analyst', 'data analyst'),
+                ('Machine Learning Engineer', 'machine learning engineer'),
+                ('AI Engineer', 'AI engineer'),
+                ('Business Intelligence Analyst', 'business intelligence analyst'),
+                ('Analytics Engineer', 'analytics engineer'),
+            ],
+            label="Job Title"
+        )
+
+        industry = gr.Dropdown(
+            choices=[
+                ('Tech', 'tech'), ('Finance', 'finance'), ('Healthcare', 'healthcare'),
+                ('Government', 'government'), ('Retail', 'retail')
+            ],
+            label="Industry", value='tech'
+        )
+
+        company_size = gr.Dropdown(
+            choices=[('Large', 'large'), ('Startup', 'startup'), ('Small', 'small')],
+            label='Company Size', value='large'
+        )
 
         seniority = gr.Dropdown(
             choices=['Junior', 'Mid-level', 'Senior', 'Lead/Principal', 'Manager/Director'],
             label="Seniority Level")
-
-        with gr.Accordion('Advanced Options', open=False):
-            degree_choice = gr.Dropdown(
-                choices=['None', "Bachelor's", "Master's", 'PhD'],
-                label="Degree Requirement",
-                value="Bachelor's"
-            )
-            industry = gr.Dropdown(
-                choices=['tech', 'finance', 'healthcare', 'government', 'retail'],
-                label="Industry",
-                value='tech'
-            )
-            years_exp = gr.Dropdown(
+        
+        years_exp = gr.Dropdown(
                 choices=[1, 2, 3, 4, 5, 6, 7, 8, 9, '10+'],
                 label='Years of Experience',
                 value=3
             )
-            company_size = gr.Dropdown(
-                choices=['large', 'startup', 'small'],
-                label='Company Size',
-                value='large'
+
+        degree_choice = gr.Dropdown(
+                choices=['None', "Bachelor's", "Master's", 'PhD'],
+                label="Degree Requirement",
+                value="Bachelor's"
             )
 
-    with gr.Row():
-        skills_input = gr.CheckboxGroup(choices=[
-            # programming languages
-            'python', 'r', 'sql', 'java', 'c++', 'scala', 'julia',
-            # data manipulation
-            'pandas', 'numpy', 'dplyr', 'data.table',
-            # machine learning
-            'scikit-learn', 'tensorflow', 'pytorch', 'keras',
-            # data visualization
-            'matplotlib', 'seaborn', 'ggplot2', 'plotly',
-            # big data tools
-            'hadoop', 'spark', 'hive', 'pig', 'git', 'kafka',
-            # cloud platforms
-            'aws', 'azure', 'google cloud', 'gcp',
-            # other tools
-            'tableau', 'power bi', 'excel', 'jupyter',
-            # databases
-            'mysql', 'postgresql', 'mongodb', 'sqlite', 'snowflake'
-        ], label="Skills")
+    with gr.Accordion('Skills', open=True):
+        with gr.Row():
+            prog_skills = gr.CheckboxGroup(
+                choices=['python', 'r', 'sql', 'java', 'c++', 'scala', 'julia'],
+                label="Programming Languages"
+            )
+            ml_skills = gr.CheckboxGroup(
+                choices=['scikit-learn', 'tensorflow', 'pytorch', 'keras'],
+                label="Machine Learning"
+            )
+        with gr.Row():
+            cloud_skills = gr.CheckboxGroup(
+                choices=['aws', 'azure', 'google cloud', 'gcp'],
+                label="Cloud Platforms"
+            )
+            bigdata_skills = gr.CheckboxGroup(
+                choices=['hadoop', 'spark', 'hive', 'pig', 'kafka'],
+                label="Big Data Tools"
+            )
+        with gr.Row():
+            viz_skills = gr.CheckboxGroup(
+                choices=['matplotlib', 'seaborn', 'ggplot2', 'plotly', 'tableau', 'power bi'],
+                label="Visualization"
+            )
+            db_skills = gr.CheckboxGroup(
+                choices=['mysql', 'postgresql', 'mongodb', 'sqlite', 'snowflake'],
+                label="Databases"
+            )
 
     analyze_but = gr.Button('Analyze')
 
@@ -186,7 +225,8 @@ with gr.Blocks() as demo:
 
     analyze_but.click(
         fn=predict,
-        inputs=[title, location, seniority, skills_input, degree_choice, industry, company_size, years_exp],
+        inputs=[title, location, seniority, prog_skills, ml_skills, cloud_skills,
+                bigdata_skills, viz_skills, db_skills, degree_choice, industry, company_size, years_exp],
         outputs=[salary_output, dist_plot, gap_plot]
     )
 

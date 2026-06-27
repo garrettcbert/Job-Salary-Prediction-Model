@@ -1,5 +1,5 @@
 from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder, StandardScaler
-# from xgboost import XGBRegressor
+from xgboost import XGBRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
@@ -39,16 +39,27 @@ def build_preprocessor():
     ])
     return preprocessor
 
-def build_pipeline():
-    return Pipeline([
-        ('preprocess', build_preprocessor()),
-        ('model', RandomForestRegressor(
+def build_pipeline(model='rf'):
+    if model == 'xgb':
+        estimator = XGBRegressor(
+            n_estimators=200,
+            max_depth=6,
+            learning_rate=0.1,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            random_state=42
+        )
+    else:
+        estimator = RandomForestRegressor(
             n_estimators=200,
             min_samples_split=2,
             min_samples_leaf=1,
-            max_features= 'log2',
-            max_depth= 20
-        ))
+            max_features='log2',
+            max_depth=20
+        )
+    return Pipeline([
+        ('preprocess', build_preprocessor()),
+        ('model', estimator)
     ])
 
 def apply_model_fit():
@@ -58,7 +69,7 @@ def apply_model_fit():
             'years_exp', 'senior_cloud', 'senior_ml', 'industry', \
             'company_size', 'degree_score']]
     y = df['salary_avg']
-    pipeline = build_pipeline()
+    pipeline = build_pipeline(model='xgb')
 
     pipeline.fit(X, y)
     joblib.dump(pipeline, 'models/salary_predictor.pkl')
