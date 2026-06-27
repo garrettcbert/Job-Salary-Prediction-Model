@@ -1,3 +1,8 @@
+**IN PROGRESS**
+ - Add deployment link and screenshot
+ - Add requirements.txt
+ - Make sure it runs locally
+
 # Salary Predictor
 
 Predicts salaries for data-related roles (Data Scientist, Analyst, etc.) based on job title, seniority, skills, and other attributes. Model trained on real job postings scraped from major job boards.
