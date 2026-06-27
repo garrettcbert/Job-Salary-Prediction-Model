@@ -51,7 +51,7 @@ job_salary_predictor/
 
 ```bash
 # clone and install dependencies
-git clone <your-repo-url>
+git clone "https://github.com/garrettcbert/Job-Salary-Prediction-Model.git"
 cd job_salary_predictor
 pip install -r requirements.txt
 
