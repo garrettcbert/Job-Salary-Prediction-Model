@@ -43,7 +43,7 @@ job_salary_predictor/
 ├── models/
 │   └── salary_predictor.pkl    # trained model (generated)
 ├── app/
-│   └── gradio_app.py           # Gradio UI
+│   └── app.py           # Gradio UI
 └── requirements.txt
 ```
 
