@@ -1,4 +1,5 @@
 import os
+import json
 import gradio as gr
 import src.model.train as train
 import numpy as np
@@ -7,21 +8,26 @@ import plotly.io as pio
 import plotly.express as px
 import pandas as pd
 import joblib
+import xgboost as xgb
+from xgboost import XGBRegressor
+from sklearn.ensemble import RandomForestRegressor
 
 pio.templates['salary_theme'] = go.layout.Template(
     layout=go.Layout(
-        font=dict(family="Arial, sans-serif", size=13, color="#2c2c2c"),
-        plot_bgcolor="#f9f9f9",
-        paper_bgcolor="#ffffff",
-        colorway=["#4C72B0", "#55A868", "#C44E52", "#8172B2", "#CCB974"],
-        title=dict(x=0.5, font=dict(size=18)),
-        xaxis=dict(showgrid=True, gridcolor="#e5e5e5", zeroline=False),
-        yaxis=dict(showgrid=True, gridcolor="#e5e5e5", zeroline=False),
+        font=dict(family="Arial, sans-serif", size=13, color="#e8e8e8"),
+        plot_bgcolor="#1f1f1f",
+        paper_bgcolor="#1f1f1f",
+        colorway=["#6FA8DC", "#93C47D", "#E06666", "#A78BCB", "#E8C56C"],
+        title=dict(x=0.5, font=dict(size=18, color = "#ffffff")),
+        xaxis=dict(showgrid=True, gridcolor="#3a3a3a", zeroline=False, linecolor = "#555",
+                   tickfont = dict(color="#e8e8e8"), title_font=dict(color="#e8e8e8")),
+        yaxis=dict(showgrid=True, gridcolor="#3a3a3a", zeroline=False, linecolor = "#555",
+                   tickfont=dict(color="#e8e8e8"), title_font=dict(color="#e8e8e8")),
         margin=dict(l=60, r=30, t=60, b=60),
     )
 )
 
-pio.templates.defualt = 'salary_theme'
+pio.templates.default = 'salary_theme'
 
 def load_model(filename='models/salary_predictor.pkl'):
     if not os.path.exists(filename):
@@ -30,6 +36,13 @@ def load_model(filename='models/salary_predictor.pkl'):
     else:
         model = joblib.load(filename)
     return model
+
+def load_metadata(filename = 'models/metadata.json'):
+    if os.path.exists(filename):
+        with open(filename) as f:
+            return json.load(f)
+    
+    return {'trained_at': 'unknown', 'job_count': 0}
 
 seniority_mapping = {
     'Junior': 1,
@@ -79,6 +92,17 @@ def build_input_df(title, location, seniority, skills_input, degree_choice, indu
     }])
 
 model = load_model()
+metadata = load_metadata()
+
+def get_tree_preds(pipeline, X_transformed):
+    estimator = pipeline.named_steps['model']
+    if isinstance(estimator, XGBRegressor):
+        booster = estimator.get_booster()
+        dmatrix = xgb.DMatrix(X_transformed)
+        n = estimator.n_estimators
+        return [booster.predict(dmatrix, iteration_range=(0, i + 1))[0] for i in range(n)]
+    else:
+        return [est.predict(X_transformed)[0] for est in estimator.estimators_]
 
 def predict(title, location, seniority, prog_skills, ml_skills, cloud_skills,
             bigdata_skills, viz_skills, db_skills, degree_choice, industry, company_size, years_exp):
@@ -86,24 +110,51 @@ def predict(title, location, seniority, prog_skills, ml_skills, cloud_skills,
     input_df = build_input_df(title, location, seniority, skills_input, degree_choice, industry, company_size, years_exp)
 
     X_transformed = model.named_steps['preprocess'].transform(input_df)
-    tree_preds = [est.predict(X_transformed)[0] for est in model.named_steps['model'].estimators_]
+    tree_preds = get_tree_preds(model, X_transformed)
     low, _, high = np.percentile(tree_preds, [25, 50, 75])
     prediction = model.predict(input_df)[0]
 
     gaps = skill_gap_analysis(input_df, prediction, ['has_cloud', 'has_ml', 'has_bigdata', 'has_viz', 'has_db'])
 
     return (
-        f"Predicted Salary: ${round(prediction, 2)}\n50% Confidence Interval: (${round(low, 2)}, ${round(high, 2)})",
+        f"Predicted Salary: ${prediction:,.2f}\n50% Confidence Interval: (${low:,.2f}, ${high:,.2f})",
         tree_distribution(tree_preds, prediction),
         skill_gap_plot(gaps)
     )
 
 def tree_distribution(tree_preds, prediction):
-    fig = px.histogram(tree_preds, nbins=20, title='Distribution of Tree Predictions', labels={'value': 'Predicted Salary ($)'})
+    low, high = np.percentile(tree_preds, [25, 75])
+
+    x_min, x_max = min(tree_preds), max(tree_preds)
+    x_padding = (x_max - x_min) * 0.1
+
+    fig = px.histogram(tree_preds, nbins=20, title='Distribution of Tree Predictions', labels={'value': 'Predicted Salary ($)',
+                                                                                               'count': 'Model Votes'})
     fig.update_traces(marker_line_width = 0)
-    fig.add_vline(x=prediction, line_dash="dash", line_color="#C44E52", line_width = 2,
-                  annotation_text=f"${prediction:,.0f}", annotation_position="top")
-    fig.update_layout(showlegend = False, yaxis_title = "Number of Trees", bargap = 0.05)
+    fig.add_vrect(x0 = low, x1 = high,
+                  fillcolor = "#6FA8DC", 
+                  opacity = 0.15, 
+                  line_width = 0,)
+    
+    fig.add_vline(x=prediction, 
+                  line_dash="dash", 
+                  line_color="#E06666", 
+                  line_width = 2,
+                  annotation_text=f"Best Estimate: ${prediction:,.0f}", 
+                  annotation_position="top")
+    
+    fig.update_layout(width=900, 
+                      margin=dict(l=80, r=40, t=100, b=80),
+                      showlegend = False, 
+                      xaxis = dict(
+                          title = "Predicted Salary ($)",
+                          range = [x_min - x_padding, x_max + x_padding]
+                      ),
+                      yaxis=dict(
+                          title="How many models agree",
+                          range=[0, None]
+                        ),
+                      bargap = 0.05)
     return fig
 
 def skill_gap_analysis(input_df, base_prediction, skill_cols):
@@ -116,19 +167,44 @@ def skill_gap_analysis(input_df, base_prediction, skill_cols):
     return dict(sorted(skill_gaps.items(), key=lambda item: item[1], reverse=True))
 
 def skill_gap_plot(skill_gaps):
+    values = list(skill_gaps.values())
+    padding = (max(values) - min(values)) * 0.25 if values else 200
     fig = px.bar(
-        x=list(skill_gaps.keys()),
-        y=list(skill_gaps.values()),
+        x=values,
+        y=list(skill_gaps.keys()),
         orientation='h',
         title='Estimated Salary Increase from Adding Each Missing Skill',
         labels={'x': 'Estimated Salary Increase ($)', 'y': ''}
         )
-    fig.update_traces(text = [f"${v:,.0f}" for v in skill_gaps.values()], textposition = 'outside')
-    fig.update_layout(showlegend = False, yaxis = dict(autorange = 'reversed'))
+    fig.update_traces(text = [f"${v:,.0f}" for v in values], 
+                      textposition = 'outside',
+                      marker_color = "#6FA8DC")
+    fig.update_layout(width=900, 
+                      margin=dict(l=100, r=100),
+                      showlegend = False, 
+                      yaxis = dict(autorange = 'reversed'),
+                      xaxis = dict(
+                          title = 'Estimated Salary Increase ($)',
+                          range = [min(values) - padding, max(values) + padding]
+                      )) 
     return fig
 
 with gr.Blocks() as demo:
-    gr.Markdown("# Salary Predictor")
+    gr.Markdown(f"""
+    # Salary Predictor
+                
+    Estimate salary for data-related roles based on job title, location, seniority,
+    required skills, and other job-posting attributes. The model is trained on real
+    job postings scraped from major job boards.
+                
+    **How it works:** An XGBoost model trained on job postings predicts your salary
+    range, then shows you which missing skills would have the biggest impact on your
+    estimate.
+                
+    *Model last trained: {metadata['trained_at']} on {metadata['job_count']:,}
+    postings*
+    """)
+    
     with gr.Row():
         location = gr.Dropdown(choices=[
             'New York, NY',
@@ -213,21 +289,37 @@ with gr.Blocks() as demo:
                 choices=['mysql', 'postgresql', 'mongodb', 'sqlite', 'snowflake'],
                 label="Databases"
             )
+    
+    gr.Examples(
+        examples = [
+            ['data scientist', 'San Francisco, CA', 'Senior',
+             ['python', 'sql'], ['pytorch'], [], [], [], [],
+             "Master's", 'tech', 'large', 5], 
+             ['data analyst', 'Chicago, IL', 'Junior',
+              ['sql'], [], [], [], ['tableau'], ['mysql'],
+              "Bachelor's", 'retail', 'small', 1]
+        ],
+        inputs = [title, location, seniority, prog_skills, ml_skills, cloud_skills,
+                bigdata_skills, viz_skills, db_skills, degree_choice, industry,
+                company_size, years_exp],
+        label = 'Try an example'
+    )
 
-    analyze_but = gr.Button('Analyze')
+    analyze_but = gr.Button('Analyze', variant = 'primary')
 
     with gr.Row():
         salary_output = gr.Textbox(label="Prediction", scale=1)
 
     with gr.Row():
-        dist_plot = gr.Plot()
-        gap_plot = gr.Plot()
+        dist_plot = gr.Plot(label = "Prediction Confidence")
+        gap_plot = gr.Plot(label = 'Skill Gap Analysis')
 
     analyze_but.click(
         fn=predict,
         inputs=[title, location, seniority, prog_skills, ml_skills, cloud_skills,
                 bigdata_skills, viz_skills, db_skills, degree_choice, industry, company_size, years_exp],
-        outputs=[salary_output, dist_plot, gap_plot]
+        outputs=[salary_output, dist_plot, gap_plot],
+        show_progress = 'full'
     )
 
-demo.launch()
+demo.launch(theme = "gradio/monochrome")

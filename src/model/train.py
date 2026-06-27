@@ -7,6 +7,8 @@ from sklearn.base import TransformerMixin, BaseEstimator
 from src.preprocessing.preprocess import apply_preprocess
 from src.queries import get_all_jobs
 import joblib
+import json
+from datetime import datetime
 
 BINARY_FEATURES = [
     'has_cloud', 'has_ml', 'has_bigdata', 'has_viz', 'has_db'
@@ -73,5 +75,14 @@ def apply_model_fit():
 
     pipeline.fit(X, y)
     joblib.dump(pipeline, 'models/salary_predictor.pkl')
+
+    metadata = {
+        'trained_at': datetime.now().strftime('%Y-%m-%d'),
+        'job_count': len(df)
+    }
+
+    with open('models/metadata.json', 'w') as f:
+        json.dump(metadata, f)
+
     return pipeline
 

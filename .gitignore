@@ -7,5 +7,3 @@ venv/
 *.egg-info/
 dist/
 build/
-Jobs.db
-models/*.pkl

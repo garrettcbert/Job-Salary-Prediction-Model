@@ -1,8 +1,10 @@
+from pathlib import Path
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Float, UniqueConstraint
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 Base = declarative_base()
+DB_PATH = Path(__file__).parent.parent / 'data' / 'jobs.db'
 
 class Job(Base):
     __tablename__ = 'Jobs'
@@ -25,7 +27,8 @@ class Job(Base):
     )
 
 def get_engine():
-    return create_engine('sqlite:///Jobs.db')
+    DB_PATH.parent.mkdir(parents = True, exist_ok = True)
+    return create_engine(f'sqlite:///{DB_PATH}')
 
 def init_db():
     engine = get_engine()
