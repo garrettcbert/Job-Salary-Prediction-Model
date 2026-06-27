@@ -1,10 +1,5 @@
 from jobspy import scrape_jobs
-from pathlib import Path
-import sys 
-
-sys.path.append(str(Path(__file__).parent.parent))
-
-from database import save_jobs, init_db
+from src.database import save_jobs, init_db
 import pandas as pd
 
 TITLES = [
@@ -56,4 +51,5 @@ def scrape_all():
     print(f'Scraped and saved {len(combined)} unique job listings.')
     print(f'Proportion of listings without salary info: {prop_without_salary:.2%})')
 
-scrape_all()
+if __name__ == '__main__':
+    scrape_all()

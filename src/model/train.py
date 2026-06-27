@@ -5,7 +5,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.base import TransformerMixin, BaseEstimator
 from src.preprocessing.preprocess import apply_preprocess
-from queries import get_all_jobs
+from src.queries import get_all_jobs
 import joblib
 
 BINARY_FEATURES = [

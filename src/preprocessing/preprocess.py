@@ -11,13 +11,13 @@ skills = [
     # data visualization
     'matplotlib', 'seaborn', 'ggplot2', 'plotly',
     # big data tools
-    'hadoop', 'spark', 'hive', 'pig', 'git',
+    'hadoop', 'spark', 'hive', 'pig', 'git', 'kafka',
     # cloud platforms
     'aws', 'azure', 'google cloud', 'gcp',
     # other tools
     'tableau', 'power bi', 'excel', 'jupyter',
     # databases
-    'mysql', 'postgresql', 'mongodb', 'sqlite'
+    'mysql', 'postgresql', 'mongodb', 'sqlite', 'snowflake'
 ]
 
 # Normalizing salary to a yearly measure
@@ -167,7 +167,7 @@ def apply_preprocess(df):
 
     df['skills'] = df.apply(extract_skills, axis = 1)
 
-    df['seniority_score'] = df.apply(get_seniority, axis = 1) * 3
+    df['seniority_score'] = df.apply(get_seniority, axis = 1)
     df = df[df['seniority_score'] > 0] # Drop internship roles since they are not comparable to other roles
 
     df['years_exp'] = df.apply(get_years_experience, axis = 1)
