@@ -4,6 +4,6 @@ plotly
 pandas
 joblib
 xgboost
-scikit-learn
+scikit-learn>=1.5
 sqlalchemy
 python-jobspy
