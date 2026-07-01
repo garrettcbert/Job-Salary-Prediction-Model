@@ -1,5 +1,5 @@
 ---
-title: Salary Predictor
+title: Salary-Predictor
 emoji: 📊
 colorFrom: blue
 colorTo: indigo
