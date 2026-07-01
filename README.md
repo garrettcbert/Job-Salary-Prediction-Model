@@ -13,7 +13,7 @@ pinned: false
 
 Predicts salaries for data-related roles (Data Scientist, Analyst, ML Engineer, etc.) based on job title, location, seniority, skills, and other attributes. Model trained on real job postings scraped from major job boards.
 
-**[Try the live demo](#)** *(add deployment link)*
+**[Try the live demo here!](https://huggingface.co/spaces/garrettcbert/Salary-Predictor)**
 
 ## Features
 
