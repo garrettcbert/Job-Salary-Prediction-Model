@@ -1,3 +1,4 @@
+from pathlib import Path
 from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder, StandardScaler
 from xgboost import XGBRegressor
 from sklearn.ensemble import RandomForestRegressor
@@ -9,6 +10,8 @@ from src.queries import get_all_jobs
 import joblib
 import json
 from datetime import datetime
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 BINARY_FEATURES = [
     'has_cloud', 'has_ml', 'has_bigdata', 'has_viz', 'has_db'
@@ -74,14 +77,14 @@ def apply_model_fit():
     pipeline = build_pipeline(model='xgb')
 
     pipeline.fit(X, y)
-    joblib.dump(pipeline, 'models/salary_predictor.pkl')
+    joblib.dump(pipeline, _PROJECT_ROOT / 'models' / 'salary_predictor.pkl')
 
     metadata = {
         'trained_at': datetime.now().strftime('%Y-%m-%d'),
         'job_count': len(df)
     }
 
-    with open('models/metadata.json', 'w') as f:
+    with open(_PROJECT_ROOT / 'models' / 'metadata.json', 'w') as f:
         json.dump(metadata, f)
 
     return pipeline

@@ -4,7 +4,7 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 Base = declarative_base()
-DB_PATH = Path(__file__).parent.parent / 'data' / 'jobs.db'
+DB_PATH = Path(__file__).parent.parent / 'data' / 'Jobs.db'
 
 class Job(Base):
     __tablename__ = 'Jobs'

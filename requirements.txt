@@ -1,0 +1,9 @@
+gradio
+numpy
+plotly
+pandas
+joblib
+xgboost
+scikit-learn
+sqlalchemy
+python-jobspy
