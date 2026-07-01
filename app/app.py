@@ -431,4 +431,4 @@ with gr.Blocks() as demo:
     )
 
 if __name__ == '__main__':
-    demo.launch(theme="gradio/monochrome")
+    demo.launch(theme="gradio/monochrome", share = True)
