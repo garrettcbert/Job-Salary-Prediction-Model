@@ -84,7 +84,7 @@ TITLES = [
 ]
 
 def get_skill_buckets(skills):
-    has_cloud = int(any(s in skills for s in ['aws', 'azure', 'google cloud', 'gcp']))
+    has_cloud = int(any(s in skills for s in ['aws', 'azure', 'gcp']))
     has_ml = int(any(s in skills for s in ['pytorch', 'tensorflow', 'scikit-learn', 'keras']))
     has_bigdata = int(any(s in skills for s in ['spark', 'hadoop', 'hive', 'kafka']))
     has_viz = int(any(s in skills for s in ['tableau', 'power bi', 'plotly']))
@@ -351,7 +351,7 @@ with gr.Blocks() as demo:
         label="Machine Learning", render=False
     )
     cloud_skills = gr.CheckboxGroup(
-        choices=['aws', 'azure', 'google cloud', 'gcp'],
+        choices=[('AWS', 'aws'), ('Azure', 'azure'), ('Google Cloud (GCP)', 'gcp')],
         label="Cloud Platforms", render=False
     )
     bigdata_skills = gr.CheckboxGroup(

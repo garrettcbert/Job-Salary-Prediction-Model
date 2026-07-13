@@ -30,7 +30,7 @@ def predict(title, location, seniority_label, skills, degree_choice, industry, c
     seniority_score = seniority_mapping[seniority_label]
     degree_score = degree_mapping[degree_choice]
     skill_count = len(skills)
-    has_cloud = int(any(s in skills for s in ['aws', 'azure', 'google cloud', 'gcp']))
+    has_cloud = int(any(s in skills for s in ['aws', 'azure', 'gcp']))
     has_ml = int(any(s in skills for s in ['pytorch', 'tensorflow', 'scikit-learn', 'keras']))
     has_bigdata = int(any(s in skills for s in ['spark', 'hadoop', 'hive', 'kafka']))
     has_viz = int(any(s in skills for s in ['tableau', 'power bi', 'plotly']))

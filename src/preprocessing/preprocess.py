@@ -20,6 +20,11 @@ skills = [
     'mysql', 'postgresql', 'mongodb', 'sqlite', 'snowflake'
 ]
 
+# Raw phrasings that should collapse to one canonical skill value
+SKILL_ALIASES = {
+    'google cloud': 'gcp'
+}
+
 # Normalizing salary to a yearly measure
 def normalize_salary(row):
     salary_min = row['min_amount']
@@ -59,19 +64,19 @@ def extract_skills(row):
     description = row['description']
     
     description = description.lower()
-    found_skills = []
+    found_skills = set()
     for skill in skills:
         pattern = r"\b" + re.escape(skill) + r"\b"
         if re.search(pattern, description):
-            found_skills.append(skill)
-    
-    return found_skills
+            found_skills.add(SKILL_ALIASES.get(skill, skill))
+
+    return sorted(found_skills)
 
 # Group skills based on type
 def get_skills(found_skills):
     skills = found_skills
     return pd.Series({
-        'has_cloud':int(any(s in skills for s in ['aws', 'azure', 'google cloud', 'gcp'])),
+        'has_cloud':int(any(s in skills for s in ['aws', 'azure', 'gcp'])),
         'has_ml': int(any(s in skills for s in ['pytorch', 'tensorflow', 'scikit-learn', 'keras'])),
         'has_bigdata': int(any(s in skills for s in ['spark', 'hadoop', 'hive', 'kafka'])),
         'has_viz': int(any(s in skills for s in ['tableau', 'power bi', 'plotly'])),
